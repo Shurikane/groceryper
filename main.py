@@ -2,6 +2,7 @@ import os
 import time
 import simplejson
 import traceback
+import re
 
 from datetime import date
 from selenium import webdriver
@@ -25,13 +26,13 @@ firefox_exec_location = 'C:/Program Files/Mozilla Firefox/firefox.exe'
 # In general, if it's powered by Flipp and is fully interactive (i.e.: clickable items and not just pictures),
 # then it should work.
 flyers_dict = {
-    'adonis': 'https://ecirculaire.groupeadonis.ca/flyers/marcheadonis-flyerflipweekly?flyer_run_id=657412&auto_locate=true&locale=fr&postal_code=H1L3N6&store_code=109&type=1#!/flyers/marcheadonis-flyerflipweekly?flyer_run_id=657412',
+    'adonis': 'https://ecirculaire.groupeadonis.ca/flyers/marcheadonis-flyerflipweekly?flyer_run_id=657412&auto_locate=true&locale=fr&postal_code=H1L1A1&store_code=109&type=1#!/flyers/marcheadonis-flyerflipweekly?flyer_run_id=657412',
     'iga': 'https://flyers.iga.net/flyers/igaquebec-quebec?flyer_run_id=641893&auto_locate=true&hide=special%2Cpub&locale=fr&store_code=8253&type=1#!/flyers/igaquebec-quebec?flyer_run_id=641893',
     'tradition': 'https://circulaire.marchestradition.com/flyers/lesmarchstradition-flyer?flyer_run_id=645717&auto_locate=true&auto_store=true&locale=fr&postal_code=H1L1A1&type=1#!/flyers/lesmarchstradition-flyer?flyer_run_id=645717',
-    'maxi': 'https://flyers.maxi.ca/flyers/maxi-flyer?flyer_run_id=650796&auto_locate=true&locale=fr&postal_code=H1L3N6&store_code=8910&type=1#!/flyers/maxi-flyer?flyer_run_id=650796',
-    'metro': 'https://ecirculaire.metro.ca/flyers/metro-circulaire?flyer_run_id=660668&auto_locate=true&locale=fr&postal_code=H1L3L2&store_code=152&type=1#!/flyers/metro-circulaire?flyer_run_id=660668',
-    'provigo': 'https://flyers.provigo.ca/flyers/provigo-flyer?flyer_run_id=763548&locale=fr&postal_code=H1L3N6&store_code=8896&type=1#!/flyers/provigo-flyer?flyer_run_id=763548',
-    'super c': 'https://ecirculaire.superc.ca/flyers/superc-circulaire?flyer_run_id=651646&auto_locate=true&locale=fr&postal_code=H1L3N6&store_code=5904&type=1#!/flyers/superc-circulaire?flyer_run_id=651646'
+    'maxi': 'https://flyers.maxi.ca/flyers/maxi-flyer?flyer_run_id=650796&auto_locate=true&locale=fr&postal_code=H1L1A1&store_code=8910&type=1#!/flyers/maxi-flyer?flyer_run_id=650796',
+    'metro': 'https://ecirculaire.metro.ca/flyers/metro-circulaire?flyer_run_id=660668&auto_locate=true&locale=fr&postal_code=H1L1A1&store_code=152&type=1#!/flyers/metro-circulaire?flyer_run_id=660668',
+    'provigo': 'https://flyers.provigo.ca/flyers/provigo-flyer?flyer_run_id=763548&locale=fr&postal_code=H1L1A1&store_code=8896&type=1#!/flyers/provigo-flyer?flyer_run_id=763548',
+    'super c': 'https://ecirculaire.superc.ca/flyers/superc-circulaire?flyer_run_id=651646&auto_locate=true&locale=fr&postal_code=H1L1A1&store_code=5904&type=1#!/flyers/superc-circulaire?flyer_run_id=651646'
 }
 
 # Finally, specify the output folder where you'd like the results to appear.
@@ -116,6 +117,10 @@ def process_flyer(flyer_name):
             .replace('EA.', '') \
             .replace('/UN.', '')
 
+        # Sometimes the price is not "2/ 1$", but rather "2 FOR 1$".  Let's bring that in line.
+        if re.match('[0-9] POUR [0-9]', item_price_text) is not None:
+            item_price_text = item_price_text.replace(" POUR", "/")
+
         try:
             if '/ ' in item_price_text:
                 # CASE: It's a quantity thing (Ex.: 2 for 5.00$)
@@ -190,7 +195,13 @@ def process_flyer(flyer_name):
                 price_entry_dict['is_minimum'] = True
                 price_entry_dict['unit_price'] = Decimal(
                     sub(pricing_regex, '',
-                        item_price_text[item_price_text.index(' '):].replace(',', '.').strip('$').strip()))
+                        item_price_text[item_price_text.index(' '):].replace(',', '.').strip()))
+            elif '$ - ' in item_price_text:
+                # CASE: The price listed is a min-max.  Take the lower price and mark it as "starting as".
+                price_entry_dict['is_minimum'] = True
+                price_entry_dict['unit_price'] = Decimal(
+                    sub(pricing_regex, '',
+                        item_price_text[:item_price_text.index('$')].replace(',', '.').strip()))
             elif 'A/' in item_price_text:
                 # CASE: This is a from-to price for multiple items.
                 # I'll take the lower one and claim it's "starting at".
