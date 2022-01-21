@@ -208,6 +208,11 @@ def process_flyer(flyer_name):
                 price_entry_dict['is_minimum'] = True
                 price_entry_dict['unit_price'] = Decimal(
                     sub(pricing_regex, '', item_price_text[:item_price_text.index('/')].replace(',', '.')))
+            elif '$ OU' in item_price_text:
+                # CASE A price in the shape of "X$ or Y$ if some condition".  Discard everything after the first price.
+                price_entry_dict['unit_price'] = Decimal(
+                    sub(pricing_regex, '', item_price_text[:item_price_text.index(' OU')].replace(',', '.')
+                        .replace('CH.', '')))
             else:
                 # CASE: The best of all cases: a plain ol' special price, nothing fancy, thank goodness.
                 if item_price_text != '':
