@@ -111,11 +111,15 @@ def process_flyer(flyer_name):
 
         # Sanitize the item_price_text a bit, otherwise there are too many possibilities to account for.
         # The things I'm taking away here don't affect the end result, and simplify the parsing job further below.
+        # NOTE: The "ou l'unité" thing is a Super C weirdness that I can't figure out.  It's an $-for-quantity price
+        # along with a higher unit price, but the unit price is entirely missing from the string.  So, I discard the
+        # latter.
         item_price_text = item[1] \
             .replace('CH./EA.', '') \
             .replace('CH.', '') \
             .replace('EA.', '') \
-            .replace('/UN.', '')
+            .replace('/UN.', '') \
+            .replace('OU L\'UNITÉ', '')
 
         # Sometimes the price is not "2/ 1$", but rather "2 FOR 1$".  Let's bring that in line.
         if re.match('[0-9] POUR [0-9]', item_price_text) is not None:
