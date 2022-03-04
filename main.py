@@ -212,6 +212,12 @@ def process_flyer(flyer_name):
                 price_entry_dict['is_minimum'] = True
                 price_entry_dict['unit_price'] = Decimal(
                     sub(pricing_regex, '', item_price_text[:item_price_text.index('/')].replace(',', '.')))
+            elif re.search('[0-9]\$ À [0-9]', item_price_text) is not None:
+                # CASE: This is a from-to price for multiple items.
+                # I'll take the lower one and claim it's "starting at".
+                price_entry_dict['is_minimum'] = True
+                price_entry_dict['unit_price'] = Decimal(
+                    sub(pricing_regex, '', item_price_text[:item_price_text.index('$ À')].replace(',', '.')))
             elif '$ OU' in item_price_text:
                 # CASE A price in the shape of "X$ or Y$ if some condition".  Discard everything after the first price.
                 price_entry_dict['unit_price'] = Decimal(
