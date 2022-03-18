@@ -55,12 +55,13 @@ pricing_regex = r'[^0-9\d\-.]'
 def process_flyer(flyer_name):
     flyer_price_arr = []
 
-    print('Collecting Data for: ' + flyer_name + '...')
+    flyer_url = flyers_dict[flyer_name].replace('?flyer_run_id=', '/grid_view/').replace('&', '?', 1)
+    print('Collecting Data for: ' + flyer_name + '...  ' + flyer_url)
 
     browser_driver = webdriver.Firefox(firefox_binary=binary, executable_path=gecko + '.exe')
 
     # Load a browser window with the chosen flyer.
-    browser_driver.get(flyers_dict[flyer_name].replace('?flyer_run_id=', '/grid_view/').replace('&', '?', 1))
+    browser_driver.get(flyer_url)
 
     # Put script to sleep to leave time for the browser to load the page.
     time.sleep(3)
@@ -218,6 +219,12 @@ def process_flyer(flyer_name):
                 price_entry_dict['is_minimum'] = True
                 price_entry_dict['unit_price'] = Decimal(
                     sub(pricing_regex, '', item_price_text[:item_price_text.index('$ À')].replace(',', '.')))
+            elif re.search('[0-9]\$ -[0-9]', item_price_text) is not None:
+                # CASE: This is a from-to price for multiple items.
+                # I'll take the lower one and claim it's "starting at".
+                price_entry_dict['is_minimum'] = True
+                price_entry_dict['unit_price'] = Decimal(
+                    sub(pricing_regex, '', item_price_text[:item_price_text.index('$ -')].replace(',', '.')))
             elif '$ OU' in item_price_text:
                 # CASE A price in the shape of "X$ or Y$ if some condition".  Discard everything after the first price.
                 price_entry_dict['unit_price'] = Decimal(
