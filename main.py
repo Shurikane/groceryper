@@ -176,6 +176,12 @@ def process_flyer(flyer_name):
                 price_entry_dict['unit_price'] = Decimal(
                     sub(pricing_regex, '', item_price_text[:item_price_text.index('/')].replace(',', '.')))
                 price_entry_dict['unit'] = 'lb'
+            elif '$ LB' in item_price_text:
+                # CASE: It's a weight, mark it as such.
+                price_entry_dict['is_weight'] = True
+                price_entry_dict['unit_price'] = Decimal(
+                    sub(pricing_regex, '', item_price_text[:item_price_text.index('$ LB')].replace(',', '.')))
+                price_entry_dict['unit'] = 'lb'
             elif '/KG' in item_price_text:
                 # CASE: It's a weight, mark it as such.
                 # I'm converting all weights to pounds (lb)
