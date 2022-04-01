@@ -90,3 +90,57 @@ cutoff price for a thick juicy AAA bone-in ribeye steak is quite different from 
 
 This way, you can now look at the price for a Filet of Something this week, and see if the price has been
 better in the past, where, when, and in which manner.
+
+If you want to look for something only for the current week, the following query would work:
+
+```
+GET flyer*/_search
+{
+  "size": 25,
+  "query": {
+    "bool": {
+      "must": {
+        "function_score": {
+          "query": {
+            "match": {
+              "item_name": {
+                "query": "your item name here"
+              }
+            }
+          },
+          "functions": [
+            {
+              "exp": {
+                "unit_price": {
+                  "origin": 0,
+                  "scale": "50"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "filter": {
+        "range": {
+          "@timestamp": {
+            "gte": "now-1d",
+            "lt": "now+2d"
+          }
+        }
+      }
+    }
+  }
+}
+```
+Usually I look for a particular item during the course of my import process, so I don't need to be
+extra precise with the date - plus or minus a couple days works fine.  Using price-drop websites
+like *supermarches.ca* is more human-friendly, I'll admit, but oftentimes I'm already in Elasticsearch
+when I get the idea of looking for a particular item.
+
+-----------------------
+
+## Known Issues
+
+* The script cannot handle multiple flyers for the same store on the same week.  This becomes apparent 
+on special events such as Christmas or Ramadan, where the script may pick up the much shorter special
+event flyer instead of the normal weekly one.
