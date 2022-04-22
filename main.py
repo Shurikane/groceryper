@@ -131,45 +131,51 @@ def process_flyer(flyer_name):
                 # CASE: It's a quantity thing (Ex.: 2 for 5.00$)
                 multi_quantity = Decimal(sub(pricing_regex, '', item_price_text[:item_price_text.index('/')]))
 
-                if ' OU ' in item_price_text:
-                    # Sometimes the price also lists what each unit costs if one doesn't buy the requisite amount.
-                    multi_total_price = Decimal(
-                        sub(pricing_regex, '',
-                            item_price_text[item_price_text.index(' '):item_price_text.index('$')].replace(',', '.')))
+                # I'm commenting this entire block out.  After multiple debugging incidents, in the end, I foresee
+                # this section growing endlessly to treat every clause I encounter, with very little return on
+                # investment.
+                #
+                # if ' OU ' in item_price_text:
+                #     # Sometimes the price also lists what each unit costs if one doesn't buy the requisite amount.
+                #     multi_total_price = Decimal(
+                #         sub(pricing_regex, '',
+                #             item_price_text[item_price_text.index(' '):item_price_text.index('$')].replace(',', '.')))
+                #
+                #     unit_label = item_price_text[item_price_text.index(' OU '):]
+                #     if '/' in unit_label:
+                #         # This is a from-to price for multiple items.
+                #         # I'll take the lower one and claim it's "starting at".
+                #         price_entry_dict['is_minimum'] = True
+                #         raw_unit_price = Decimal(
+                #             sub(pricing_regex, '', unit_label[:unit_label.index('/')]
+                #                 .replace('CH.', '')
+                #                 .replace(',', '.')))
+                #     else:
+                #         raw_unit_price = Decimal(
+                #             sub(pricing_regex, '', unit_label.replace('CH.', '').replace(',', '.')))
+                #
+                #     raw_unit_price_if_multi = raw_unit_price * multi_quantity
+                #
+                #     price_entry_dict['unit_price'] = raw_unit_price
+                #     price_entry_dict['unit_price_if_multi'] = raw_unit_price_if_multi
+                # else:
+                #     # If the unit cost isn't specified, default to whatever the special price is, since the
+                #     # 'unit_price' field is considered a bare essential.
+                #     multi_total_price = Decimal(
+                #         sub(pricing_regex, '',
+                #             item_price_text[item_price_text.index(' '):item_price_text.index('$')].replace(',', '.')))
+                #     price_entry_dict['unit_price'] = multi_total_price / multi_quantity
+                #     price_entry_dict['unit_price_if_multi'] = multi_total_price
 
-                    unit_label = item_price_text[item_price_text.index(' OU '):]
-                    if '/' in unit_label:
-                        # This is a from-to price for multiple items.
-                        # I'll take the lower one and claim it's "starting at".
-                        price_entry_dict['is_minimum'] = True
-                        raw_unit_price = Decimal(
-                            sub(pricing_regex, '', unit_label[:unit_label.index('/')]
-                                .replace('CH.', '')
-                                .replace(',', '.')))
-                    else:
-                        raw_unit_price = Decimal(
-                            sub(pricing_regex, '', unit_label.replace('CH.', '').replace(',', '.')))
-
-                    raw_unit_price_if_multi = raw_unit_price * multi_quantity
-
-                    price_entry_dict['unit_price'] = raw_unit_price
-                    price_entry_dict['unit_price_if_multi'] = raw_unit_price_if_multi
-                else:
-                    # If the unit cost isn't specified, default to whatever the special price is, since the
-                    # 'unit_price' field is considered a bare essential.
-                    multi_total_price = Decimal(
-                        sub(pricing_regex, '',
-                            item_price_text[item_price_text.index(' '):item_price_text.index('$')].replace(',', '.')))
-                    price_entry_dict['unit_price'] = multi_total_price / multi_quantity
-                    price_entry_dict['unit_price_if_multi'] = multi_total_price
-
-                multi_unit_price = multi_total_price / multi_quantity
+                multi_total_price = Decimal(
+                    sub(pricing_regex, '',
+                        item_price_text[item_price_text.index(' '):item_price_text.index('$')].replace(',', '.')))
 
                 # Flag the document as requiring a quantity-multiple for the special to work.
                 price_entry_dict['is_multi'] = True
                 price_entry_dict['multi_quantity'] = multi_quantity
-                price_entry_dict['multi_total_price'] = multi_total_price
-                price_entry_dict['multi_unit_price'] = multi_unit_price
+                price_entry_dict['unit_price'] = multi_total_price / multi_quantity
+                price_entry_dict['unit_price_if_multi'] = multi_total_price
             elif '/LB' in item_price_text:
                 # CASE: It's a weight, mark it as such.
                 price_entry_dict['is_weight'] = True
@@ -232,10 +238,16 @@ def process_flyer(flyer_name):
                 price_entry_dict['unit_price'] = Decimal(
                     sub(pricing_regex, '', item_price_text[:item_price_text.index('$ -')].replace(',', '.')))
             elif '$ OU' in item_price_text:
-                # CASE A price in the shape of "X$ or Y$ if some condition".  Discard everything after the first price.
+                # CASE: A price in the shape of "X$ or Y$ if some condition".  Discard everything after the first price.
                 price_entry_dict['unit_price'] = Decimal(
                     sub(pricing_regex, '', item_price_text[:item_price_text.index(' OU')].replace(',', '.')
                         .replace('CH.', '')))
+            elif re.search('\$ REVIENT À [0-9]', item_price_text) is not None:
+                # CASE: A price expressed as "X$, meaning Y$ per unit" such as when it's a baker's dozen of sorts.
+                # Grab only the second price.
+                price_entry_dict['unit_price'] = Decimal(
+                    sub(pricing_regex, '', item_price_text[item_price_text.index(' REVIENT À '):].replace(',', '.')
+                        .replace(' L\'UNITÉ.', '')))
             else:
                 # CASE: The best of all cases: a plain ol' special price, nothing fancy, thank goodness.
                 if item_price_text != '':
