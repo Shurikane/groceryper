@@ -127,7 +127,15 @@ def process_flyer(flyer_name):
             item_price_text = item_price_text.replace(" POUR", "/")
 
         try:
-            if '/ ' in item_price_text:
+            # Uncomment either of the clauses below if the script errors out on an item you don't want to deal with.
+            if item[0] == 'POMMES COMPLIMENTS':
+                continue
+            if item[0] == 'SAUCE POUR PÂTES MIKES':
+                continue
+            # if 'SANS CARTE AIR MILES' in item_price_text:
+            #     continue
+
+            if '/ ' in item_price_text and '/ LB' not in item_price_text and '/ KG' not in item_price_text:
                 # CASE: It's a quantity thing (Ex.: 2 for 5.00$)
                 multi_quantity = Decimal(sub(pricing_regex, '', item_price_text[:item_price_text.index('/')]))
 
@@ -176,7 +184,7 @@ def process_flyer(flyer_name):
                 price_entry_dict['multi_quantity'] = multi_quantity
                 price_entry_dict['unit_price'] = multi_total_price / multi_quantity
                 price_entry_dict['unit_price_if_multi'] = multi_total_price
-            elif '/LB' in item_price_text:
+            elif '/LB' in item_price_text or '/ LB' in item_price_text:
                 # CASE: It's a weight, mark it as such.
                 price_entry_dict['is_weight'] = True
                 price_entry_dict['unit_price'] = Decimal(
@@ -188,7 +196,7 @@ def process_flyer(flyer_name):
                 price_entry_dict['unit_price'] = Decimal(
                     sub(pricing_regex, '', item_price_text[:item_price_text.index('$ LB')].replace(',', '.')))
                 price_entry_dict['unit'] = 'lb'
-            elif '/KG' in item_price_text:
+            elif '/KG' in item_price_text or '/ KG' in item_price_text:
                 # CASE: It's a weight, mark it as such.
                 # I'm converting all weights to pounds (lb)
                 price_entry_dict['is_weight'] = True
